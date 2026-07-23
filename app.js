@@ -667,10 +667,31 @@
 
   // --- Copilot Seat Management & Activity ---
   let seatsTable = null;
+  let currentSeatsData = null;
   const seatsForm = document.getElementById('seats-form');
   const seatsRunBtn = document.getElementById('seats-run-btn');
   const seatsError = document.getElementById('seats-error');
   const seatsResults = document.getElementById('seats-results');
+
+  document.getElementById('seats-download-csv').addEventListener('click', () => {
+    if (!currentSeatsData) return;
+    const cols = ['login', 'team', 'status', 'lastActivityAt', 'lastActivityEditor', 'pendingCancellationDate', 'createdAt'];
+    const headers = ['User', 'Team', 'Status', 'Last activity', 'Last editor', 'Pending cancellation', 'Created'];
+    const escape = (v) => {
+      const s = v == null ? '' : String(v);
+      return /[",\n]/.test(s) ? `"${s.replace(/"/g, '""')}"` : s;
+    };
+    const csv = [headers.join(',')]
+      .concat((currentSeatsData.seats || []).map(s => cols.map(c => escape(s[c])).join(',')))
+      .join('\n');
+    const blob = new Blob([csv], { type: 'text/csv' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `copilot-seats-${Date.now()}.csv`;
+    a.click();
+    URL.revokeObjectURL(url);
+  });
 
   seatsForm.addEventListener('submit', async (e) => {
     e.preventDefault();
@@ -683,6 +704,7 @@
       pat: document.getElementById('seats-pat').value.trim(),
       activityWindowDays: Number(document.getElementById('seats-window').value) || 30
     };
+    document.getElementById('seats-window-label').textContent = payload.activityWindowDays;
 
     try {
       const res = await fetch('/api/seats', {
@@ -705,6 +727,7 @@
   });
 
   function renderSeats(data) {
+    currentSeatsData = data;
     seatsResults.classList.remove('hidden');
     document.getElementById('seats-stat-total').textContent = data.totalSeats.toLocaleString();
     document.getElementById('seats-stat-active').textContent = data.activeSeats.toLocaleString();

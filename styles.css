@@ -25,7 +25,7 @@ body {
 header {
   padding: 32px 40px 8px;
 }
-header h1 { margin: 0 0 4px; font-size: 24px; }
+header h1, header h2 { margin: 0 0 4px; font-size: 24px; }
 header .sub { margin: 0; color: var(--muted); font-size: 14px; }
 header code { background: var(--panel-2); padding: 1px 6px; border-radius: 4px; }
 
@@ -47,7 +47,14 @@ header code { background: var(--panel-2); padding: 1px 6px; border-radius: 4px; 
   gap: 16px;
   margin-bottom: 14px;
 }
-#report-form label {
+#seats-form .row {
+  display: grid;
+  grid-template-columns: 1fr 1fr 140px;
+  gap: 16px;
+  margin-bottom: 14px;
+}
+#report-form label,
+#seats-form label {
   display: flex;
   flex-direction: column;
   font-size: 13px;
@@ -55,7 +62,8 @@ header code { background: var(--panel-2); padding: 1px 6px; border-radius: 4px; 
   gap: 6px;
 }
 #report-form .hint { color: var(--muted); font-weight: normal; }
-#report-form input {
+#report-form input,
+#seats-form input {
   background: var(--panel-2);
   border: 1px solid var(--border);
   color: var(--text);
@@ -64,7 +72,8 @@ header code { background: var(--panel-2); padding: 1px 6px; border-radius: 4px; 
   font-size: 14px;
   color-scheme: dark;
 }
-#report-form input:focus {
+#report-form input:focus,
+#seats-form input:focus {
   outline: none;
   border-color: var(--accent);
   box-shadow: 0 0 0 3px rgba(47,129,247,0.25);
@@ -136,7 +145,7 @@ button:disabled { opacity: 0.6; cursor: not-allowed; }
 .stat-label { font-size: 12px; color: var(--muted); text-transform: uppercase; letter-spacing: 0.5px; }
 .stat-value { font-size: 22px; font-weight: 700; margin-top: 4px; }
 
-#seats-results .summary { grid-template-columns: repeat(4, 1fr); margin-bottom: 16px; }
+#seats-results .summary { grid-template-columns: repeat(4, 1fr); }
 
 .seat-status {
   display: inline-block;
