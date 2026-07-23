@@ -664,4 +664,85 @@
   }
 
   function renderTable_UNUSED() { /* replaced by renderUsersTable + drill-down */ }
+
+  // --- Copilot Seat Management & Activity ---
+  let seatsTable = null;
+  const seatsForm = document.getElementById('seats-form');
+  const seatsRunBtn = document.getElementById('seats-run-btn');
+  const seatsError = document.getElementById('seats-error');
+  const seatsResults = document.getElementById('seats-results');
+
+  seatsForm.addEventListener('submit', async (e) => {
+    e.preventDefault();
+    seatsError.classList.add('hidden');
+    seatsError.textContent = '';
+    seatsRunBtn.disabled = true;
+
+    const payload = {
+      org: document.getElementById('seats-org').value.trim(),
+      pat: document.getElementById('seats-pat').value.trim(),
+      activityWindowDays: Number(document.getElementById('seats-window').value) || 30
+    };
+
+    try {
+      const res = await fetch('/api/seats', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload)
+      });
+      const info = await res.json().catch(() => ({}));
+      if (!res.ok) {
+        throw new Error(info.error || `Failed to fetch seats (${res.status})`);
+      }
+      renderSeats(info);
+    } catch (err) {
+      seatsError.textContent = err.message;
+      seatsError.classList.remove('hidden');
+      seatsResults.classList.add('hidden');
+    } finally {
+      seatsRunBtn.disabled = false;
+    }
+  });
+
+  function renderSeats(data) {
+    seatsResults.classList.remove('hidden');
+    document.getElementById('seats-stat-total').textContent = data.totalSeats.toLocaleString();
+    document.getElementById('seats-stat-active').textContent = data.activeSeats.toLocaleString();
+    document.getElementById('seats-stat-inactive').textContent = data.inactiveSeats.toLocaleString();
+    document.getElementById('seats-stat-pending').textContent = data.pendingCancellationSeats.toLocaleString();
+
+    const $t = jQuery('#seats-table');
+    if (seatsTable) {
+      seatsTable.destroy();
+      $t.empty();
+    }
+
+    const rows = (data.seats || []).map(s => [
+      escapeHtml(s.login),
+      escapeHtml(s.team || '—'),
+      s.status === 'active'
+        ? '<span class="seat-status seat-active">Active</span>'
+        : '<span class="seat-status seat-inactive">Inactive</span>',
+      s.lastActivityAt ? new Date(s.lastActivityAt).toLocaleString() : 'Never',
+      escapeHtml(s.lastActivityEditor || '—'),
+      s.pendingCancellationDate ? new Date(s.pendingCancellationDate).toLocaleDateString() : '—',
+      s.createdAt ? new Date(s.createdAt).toLocaleDateString() : '—'
+    ]);
+
+    seatsTable = $t.DataTable({
+      data: rows,
+      columns: [
+        { title: 'User' },
+        { title: 'Team' },
+        { title: 'Status' },
+        { title: 'Last activity' },
+        { title: 'Last editor' },
+        { title: 'Pending cancellation' },
+        { title: 'Created' }
+      ],
+      pageLength: 25,
+      lengthMenu: [10, 25, 50, 100, 250],
+      order: [[2, 'asc']]
+    });
+  }
 })();

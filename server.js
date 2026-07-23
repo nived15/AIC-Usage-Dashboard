@@ -182,6 +182,90 @@ async function runJob(jobId, { enterprise, pat, startDate, endDate }) {
   }
 }
 
+// --- Copilot Seat Management & Activity ---
+
+async function fetchAllSeats(org, pat) {
+  let seats = [];
+  let totalSeats = 0;
+  let url = `${GITHUB_API}/orgs/${encodeURIComponent(org)}/copilot/billing/seats?per_page=100`;
+  while (url) {
+    const res = await fetch(url, { headers: ghHeaders(pat) });
+    if (!res.ok) {
+      const t = await res.text();
+      throw new Error(`Get seats failed (${res.status}): ${t}`);
+    }
+    const json = await res.json();
+    if (typeof json.total_seats === 'number') totalSeats = json.total_seats;
+    if (Array.isArray(json.seats)) seats.push(...json.seats);
+
+    // Follow pagination via the Link header (rel="next").
+    url = null;
+    const link = res.headers.get('link');
+    if (link) {
+      const next = link.split(',').map(s => s.trim()).find(s => /rel="next"/.test(s));
+      if (next) {
+        const m = next.match(/<([^>]+)>/);
+        if (m) url = m[1];
+      }
+    }
+  }
+  if (!totalSeats) totalSeats = seats.length;
+  return { totalSeats, seats };
+}
+
+// Computes active/inactive/pending-cancellation counts since GitHub's API
+// does not return a direct status field.
+function computeSeatMetrics(totalSeats, seats, activityWindowDays) {
+  const now = Date.now();
+  const windowMs = activityWindowDays * 24 * 60 * 60 * 1000;
+  let activeSeats = 0;
+  let inactiveSeats = 0;
+  let pendingCancellationSeats = 0;
+
+  const enrichedSeats = seats.map(seat => {
+    const lastActivityAt = seat.last_activity_at || null;
+    const lastActivityMs = lastActivityAt ? new Date(lastActivityAt).getTime() : NaN;
+    const isActive = lastActivityAt != null && Number.isFinite(lastActivityMs) && (now - lastActivityMs) <= windowMs;
+
+    if (isActive) activeSeats++; else inactiveSeats++;
+    if (seat.pending_cancellation_date) pendingCancellationSeats++;
+
+    return {
+      login: (seat.assignee && (seat.assignee.login || seat.assignee.slug || seat.assignee.name)) || 'unknown',
+      avatarUrl: seat.assignee ? seat.assignee.avatar_url : null,
+      team: seat.assigning_team ? seat.assigning_team.name : null,
+      createdAt: seat.created_at || null,
+      lastActivityAt,
+      lastActivityEditor: seat.last_activity_editor || null,
+      pendingCancellationDate: seat.pending_cancellation_date || null,
+      status: isActive ? 'active' : 'inactive'
+    };
+  });
+
+  return {
+    totalSeats: totalSeats || seats.length,
+    activeSeats,
+    inactiveSeats,
+    pendingCancellationSeats,
+    activityWindowDays,
+    seats: enrichedSeats
+  };
+}
+
+app.post('/api/seats', async (req, res) => {
+  const { org, pat, activityWindowDays } = req.body || {};
+  if (!org || !pat) {
+    return res.status(400).json({ error: 'org and pat are required.' });
+  }
+  const days = Number(activityWindowDays) > 0 ? Number(activityWindowDays) : 30;
+  try {
+    const { totalSeats, seats } = await fetchAllSeats(org, pat);
+    res.json(computeSeatMetrics(totalSeats, seats, days));
+  } catch (err) {
+    res.status(502).json({ error: err.message || String(err) });
+  }
+});
+
 app.post('/api/jobs', (req, res) => {
   const { enterprise, pat, startDate, endDate } = req.body || {};
   if (!enterprise || !pat || !startDate) {

@@ -136,6 +136,18 @@ button:disabled { opacity: 0.6; cursor: not-allowed; }
 .stat-label { font-size: 12px; color: var(--muted); text-transform: uppercase; letter-spacing: 0.5px; }
 .stat-value { font-size: 22px; font-weight: 700; margin-top: 4px; }
 
+#seats-results .summary { grid-template-columns: repeat(4, 1fr); margin-bottom: 16px; }
+
+.seat-status {
+  display: inline-block;
+  padding: 2px 8px;
+  border-radius: 10px;
+  font-size: 12px;
+  font-weight: 600;
+}
+.seat-status.seat-active { background: rgba(63, 185, 80, 0.15); color: #3fb950; }
+.seat-status.seat-inactive { background: rgba(248, 81, 73, 0.15); color: var(--err); }
+
 .charts-grid {
   display: grid;
   grid-template-columns: 1fr 1fr;
