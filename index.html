@@ -89,6 +89,44 @@
     </div>
   </section>
 
+  <section id="seats-section" class="card">
+    <h2>🪑 Copilot Seat Management &amp; Activity</h2>
+    <p class="sub">Pulls organization seat data from the Copilot Billing API and evaluates activity status.</p>
+    <form id="seats-form">
+      <div class="row">
+        <label>
+          Organization
+          <input type="text" id="seats-org" placeholder="my-org" required autocomplete="off" />
+        </label>
+        <label>
+          Personal Access Token (PAT)
+          <input type="password" id="seats-pat" placeholder="ghp_… (requires manage_billing:copilot or read:org)" required autocomplete="off" />
+        </label>
+        <label>
+          Activity window (days)
+          <input type="number" id="seats-window" min="1" value="30" />
+        </label>
+      </div>
+      <div class="actions">
+        <button type="submit" id="seats-run-btn">Fetch Seats</button>
+        <span class="note">Your PAT is sent to the local server only and used to call GitHub on your behalf.</span>
+      </div>
+    </form>
+    <div id="seats-error" class="date-error hidden"></div>
+
+    <div id="seats-results" class="hidden">
+      <div class="summary">
+        <div class="stat"><div class="stat-label">Total seats</div><div id="seats-stat-total" class="stat-value">–</div></div>
+        <div class="stat"><div class="stat-label">Active seats</div><div id="seats-stat-active" class="stat-value">–</div></div>
+        <div class="stat"><div class="stat-label">Inactive seats</div><div id="seats-stat-inactive" class="stat-value">–</div></div>
+        <div class="stat"><div class="stat-label">Pending cancellation</div><div id="seats-stat-pending" class="stat-value">–</div></div>
+      </div>
+      <div class="table-wrap">
+        <table id="seats-table" class="display" style="width:100%"></table>
+      </div>
+    </div>
+  </section>
+
   <dialog id="drill-modal" class="drill-modal">
     <div class="drill-modal-header">
       <div>
