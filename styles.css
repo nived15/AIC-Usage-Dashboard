@@ -167,6 +167,46 @@ button:disabled { opacity: 0.6; cursor: not-allowed; }
 .seat-status.seat-inactive { background: rgba(248, 81, 73, 0.15); color: var(--err); }
 
 #orgs-results .summary { grid-template-columns: repeat(1, 1fr); max-width: 220px; }
+#seats-org-select {
+  background: var(--panel-2);
+  border: 1px solid var(--border);
+  color: var(--text);
+  border-radius: 6px;
+  font-size: 14px;
+  width: 100%;
+  min-height: 110px;
+  padding: 4px;
+}
+#seats-org-select option {
+  padding: 5px 8px;
+  border-radius: 4px;
+}
+#seats-org-select option:checked {
+  background: var(--accent);
+}
+.seats-org-select-actions {
+  display: flex;
+  gap: 6px;
+  margin-bottom: 6px;
+}
+.seats-org-action-btn {
+  padding: 4px 10px;
+  font-size: 12px;
+  font-weight: 500;
+  background: var(--panel-2);
+  color: var(--muted);
+  border: 1px solid var(--border);
+  border-radius: 5px;
+  cursor: pointer;
+}
+.seats-org-action-btn:hover { background: var(--panel); color: var(--text); }
+.seats-org-hint {
+  display: block;
+  margin-top: 5px;
+  font-size: 11px;
+  color: var(--muted);
+  font-style: italic;
+}
 .org-avatar { width: 18px; height: 18px; border-radius: 4px; vertical-align: middle; margin-right: 4px; }
 
 .charts-grid {
