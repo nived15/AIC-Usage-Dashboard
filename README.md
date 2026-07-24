@@ -1,9 +1,10 @@
 # AI Credit Usage Dashboard
 
-Small local web app with two panels:
+Small local web app with three panels:
 
 1. **AI Credit Usage** — pulls GitHub Enterprise AI Credit usage report exports and visualizes them in a dashboard with charts and a searchable/sortable table.
-2. **Copilot Seat Management & Activity** — fetches Copilot seat assignments for an organization and evaluates each seat's activity status.
+2. **Enterprise Organizations** — lists all organizations under a GitHub Enterprise account; results automatically populate the organization selector in Copilot Seat Management.
+3. **Copilot Seat Management & Activity** — fetches Copilot seat assignments for one or more organizations and evaluates each seat's activity status.
 
 ---
 
@@ -91,6 +92,7 @@ Click **Fetch Organizations**. The server will:
 
 - 🏢 Full paginated list of all organizations under your GitHub Enterprise account
 - Normalized response fields (`login`, `name`, `description`, `html_url`, `url`, `avatar_url`)
+- 🔗 Results automatically populate the organization selector in **Copilot Seat Management & Activity**
 
 ### Troubleshooting
 
@@ -106,21 +108,24 @@ Click **Fetch Organizations**. The server will:
 
 Fill in:
 
-- **Organization** (org login, not display name)
+- **Organization(s)** — after running **Fetch Organizations** in the Enterprise Organizations panel above, a multi-select dropdown is automatically populated with all orgs. Use the **search box** to filter by name, then select the orgs you want (or click **Select All** / **Deselect All**). If you haven't fetched enterprise orgs yet, a plain text input accepts a single org login instead.
 - **PAT** with `manage_billing:copilot` scope
 - **Activity window (days)** — number of days to look back when classifying a seat as Active or Inactive (default: 30)
 
 Click **Fetch Seats**. The server will:
 
-1. Page through `GET /orgs/{org}/copilot/billing/seats` (100 seats per page) until all seats are collected.
+1. Fetch seat data for every selected organization in parallel via `GET /orgs/{org}/copilot/billing/seats`.
 2. Classify each seat as **Active** (last activity within the window) or **Inactive**.
-3. Return summary counts and per-seat details.
+3. Consolidate and return summary counts and per-seat details across all selected orgs.
 
 ### Seat Management Features
 
-- 🪑 Summary stats: total seats, active seats, inactive seats, pending cancellation
-- 🔎 Searchable, sortable, paginated seat table showing user, team, activity status, last activity timestamp, last editor, pending cancellation date, and seat creation date
-- 📥 Download seat data as CSV
+- 🪑 Summary stats: total seats, active seats, inactive seats, pending cancellation (consolidated across all selected orgs)
+- 🏢 Multi-org selection — choose any combination of organizations from a dropdown pre-populated by Enterprise Organizations
+- 🔍 Live search/filter box — type to instantly narrow the org list before selecting
+- ☑️ Select All / Deselect All — applies to the currently filtered list
+- 🔎 Searchable, sortable, paginated seat table — includes an **Organization** column when data spans multiple orgs
+- 📥 Download consolidated seat data as CSV (includes Organization column in multi-org mode)
 - ⏱️ Configurable activity window — adjust what "active" means for your team
 
 ### Troubleshooting

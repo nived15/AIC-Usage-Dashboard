@@ -339,6 +339,7 @@ function computeSeatMetrics(totalSeats, seats, activityWindowDays) {
     return {
       login: (seat.assignee && (seat.assignee.login || seat.assignee.slug || seat.assignee.name)) || 'unknown',
       avatarUrl: seat.assignee ? seat.assignee.avatar_url : null,
+      org: seat.org || null,
       team: seat.assigning_team ? seat.assigning_team.name : null,
       createdAt: seat.created_at || null,
       lastActivityAt,
@@ -359,14 +360,28 @@ function computeSeatMetrics(totalSeats, seats, activityWindowDays) {
 }
 
 app.post('/api/seats', async (req, res) => {
-  const { org, pat, activityWindowDays } = req.body || {};
-  if (!org || !pat) {
-    return res.status(400).json({ error: 'org and pat are required.' });
+  const { org, orgs: orgsInput, pat, activityWindowDays } = req.body || {};
+  // Support both single org (string) and multiple orgs (array).
+  const orgList = Array.isArray(orgsInput) && orgsInput.length > 0
+    ? orgsInput.map(o => String(o).trim()).filter(Boolean)
+    : (org ? [String(org).trim()] : []);
+  if (!orgList.length || !pat) {
+    return res.status(400).json({ error: 'org (or orgs) and pat are required.' });
   }
   const days = Number(activityWindowDays) > 0 ? Number(activityWindowDays) : 30;
   try {
-    const { totalSeats, seats } = await fetchAllSeats(org, pat);
-    res.json(computeSeatMetrics(totalSeats, seats, days));
+    // Fetch all orgs in parallel; tag each raw seat with its source org.
+    const results = await Promise.all(
+      orgList.map(async o => {
+        const { totalSeats, seats } = await fetchAllSeats(o, pat);
+        return { org: o, totalSeats, seats: seats.map(s => ({ ...s, org: o })) };
+      })
+    );
+    const totalSeats = results.reduce((sum, r) => sum + r.totalSeats, 0);
+    const allSeats = results.flatMap(r => r.seats);
+    const metrics = computeSeatMetrics(totalSeats, allSeats, days);
+    if (orgList.length > 1) metrics.multiOrg = true;
+    res.json(metrics);
   } catch (err) {
     res.status(502).json({ error: err.message || String(err) });
   }

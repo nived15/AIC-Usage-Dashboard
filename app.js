@@ -724,11 +724,48 @@
     }
   });
 
+  let seatsOrgList = []; // all orgs; used to rebuild filtered options
+
+  function buildSeatsOrgOptions(query) {
+    const select = document.getElementById('seats-org-select');
+    const q = (query || '').toLowerCase().trim();
+    // Preserve selected state across rebuilds
+    const selected = new Set(Array.from(select.options).filter(o => o.selected).map(o => o.value));
+    select.innerHTML = '';
+    const filtered = q
+      ? seatsOrgList.filter(o => o.login.toLowerCase().includes(q) || (o.name || '').toLowerCase().includes(q))
+      : seatsOrgList;
+    filtered.forEach(o => {
+      const opt = document.createElement('option');
+      opt.value = o.login;
+      opt.textContent = o.login + (o.name ? ` — ${o.name}` : '');
+      if (selected.has(o.login)) opt.selected = true;
+      select.appendChild(opt);
+    });
+    const countEl = document.getElementById('seats-org-match-count');
+    if (countEl) {
+      countEl.textContent = q ? `${filtered.length} of ${seatsOrgList.length}` : `${seatsOrgList.length} orgs`;
+    }
+  }
+
+  function populateSeatsOrgSelect(organizations) {
+    const selectWrap = document.getElementById('seats-org-select-wrap');
+    const manualWrap = document.getElementById('seats-org-manual-wrap');
+    if (!organizations || !organizations.length) return;
+    seatsOrgList = organizations;
+    const searchInput = document.getElementById('seats-org-search');
+    if (searchInput) searchInput.value = '';
+    buildSeatsOrgOptions('');
+    selectWrap.classList.remove('hidden');
+    manualWrap.classList.add('hidden');
+  }
+
   function renderOrgs(data) {
     currentOrgsData = data;
     orgsResults.classList.remove('hidden');
     const organizations = data.organizations || [];
     document.getElementById('orgs-stat-total').textContent = organizations.length.toLocaleString();
+    populateSeatsOrgSelect(organizations);
 
     const $t = jQuery('#orgs-table');
     if (orgsTable) {
@@ -767,10 +804,31 @@
   const seatsError = document.getElementById('seats-error');
   const seatsResults = document.getElementById('seats-results');
 
+  document.getElementById('seats-org-search').addEventListener('input', function () {
+    buildSeatsOrgOptions(this.value);
+  });
+
+  document.getElementById('seats-select-all-btn').addEventListener('click', () => {
+    const select = document.getElementById('seats-org-select');
+    Array.from(select.options).forEach(o => { o.selected = true; });
+  });
+
+  document.getElementById('seats-deselect-all-btn').addEventListener('click', () => {
+    const select = document.getElementById('seats-org-select');
+    Array.from(select.options).forEach(o => { o.selected = false; });
+  });
+
   document.getElementById('seats-download-csv').addEventListener('click', () => {
     if (!currentSeatsData) return;
-    const cols = ['login', 'team', 'status', 'lastActivityAt', 'lastActivityEditor', 'pendingCancellationDate', 'createdAt'];
-    const headers = ['User', 'Team', 'Status', 'Last activity', 'Last editor', 'Pending cancellation', 'Created'];
+    const multiOrg = !!currentSeatsData.multiOrg;
+    const cols = [
+      ...(multiOrg ? ['org'] : []),
+      'login', 'team', 'status', 'lastActivityAt', 'lastActivityEditor', 'pendingCancellationDate', 'createdAt'
+    ];
+    const headers = [
+      ...(multiOrg ? ['Organization'] : []),
+      'User', 'Team', 'Status', 'Last activity', 'Last editor', 'Pending cancellation', 'Created'
+    ];
     const escape = (v) => {
       const s = v == null ? '' : String(v);
       return /[",\n]/.test(s) ? `"${s.replace(/"/g, '""')}"` : s;
@@ -793,12 +851,39 @@
     seatsError.textContent = '';
     seatsRunBtn.disabled = true;
 
+    const selectWrap = document.getElementById('seats-org-select-wrap');
+    const select = document.getElementById('seats-org-select');
+
+    let orgs;
+    if (!selectWrap.classList.contains('hidden')) {
+      // Multi-select mode — populated from Enterprise Organizations
+      orgs = Array.from(select.selectedOptions).map(o => o.value);
+      if (!orgs.length) {
+        seatsError.textContent = 'Please select at least one organization.';
+        seatsError.classList.remove('hidden');
+        seatsRunBtn.disabled = false;
+        return;
+      }
+    } else {
+      // Manual input fallback
+      const orgInput = document.getElementById('seats-org').value.trim();
+      if (!orgInput) {
+        seatsError.textContent = 'Organization is required.';
+        seatsError.classList.remove('hidden');
+        seatsRunBtn.disabled = false;
+        return;
+      }
+      orgs = [orgInput];
+    }
+
+    const activityWindowDays = Number(document.getElementById('seats-window').value) || 30;
+    document.getElementById('seats-window-label').textContent = activityWindowDays;
+
     const payload = {
-      org: document.getElementById('seats-org').value.trim(),
+      orgs,
       pat: document.getElementById('seats-pat').value.trim(),
-      activityWindowDays: Number(document.getElementById('seats-window').value) || 30
+      activityWindowDays
     };
-    document.getElementById('seats-window-label').textContent = payload.activityWindowDays;
 
     try {
       const res = await fetch('/api/seats', {
@@ -834,32 +919,42 @@
       $t.empty();
     }
 
-    const rows = (data.seats || []).map(s => [
-      escapeHtml(s.login),
-      escapeHtml(s.team || '—'),
-      s.status === 'active'
-        ? '<span class="seat-status seat-active">Active</span>'
-        : '<span class="seat-status seat-inactive">Inactive</span>',
-      s.lastActivityAt ? new Date(s.lastActivityAt).toLocaleString() : 'Never',
-      escapeHtml(s.lastActivityEditor || '—'),
-      s.pendingCancellationDate ? new Date(s.pendingCancellationDate).toLocaleDateString() : '—',
-      s.createdAt ? new Date(s.createdAt).toLocaleDateString() : '—'
-    ]);
+    const multiOrg = !!data.multiOrg;
+
+    const rows = (data.seats || []).map(s => {
+      const row = [];
+      if (multiOrg) row.push(escapeHtml(s.org || '—'));
+      row.push(
+        escapeHtml(s.login),
+        escapeHtml(s.team || '—'),
+        s.status === 'active'
+          ? '<span class="seat-status seat-active">Active</span>'
+          : '<span class="seat-status seat-inactive">Inactive</span>',
+        s.lastActivityAt ? new Date(s.lastActivityAt).toLocaleString() : 'Never',
+        escapeHtml(s.lastActivityEditor || '—'),
+        s.pendingCancellationDate ? new Date(s.pendingCancellationDate).toLocaleDateString() : '—',
+        s.createdAt ? new Date(s.createdAt).toLocaleDateString() : '—'
+      );
+      return row;
+    });
+
+    const columns = [
+      ...(multiOrg ? [{ title: 'Organization' }] : []),
+      { title: 'User' },
+      { title: 'Team' },
+      { title: 'Status' },
+      { title: 'Last activity' },
+      { title: 'Last editor' },
+      { title: 'Pending cancellation' },
+      { title: 'Created' }
+    ];
 
     seatsTable = $t.DataTable({
       data: rows,
-      columns: [
-        { title: 'User' },
-        { title: 'Team' },
-        { title: 'Status' },
-        { title: 'Last activity' },
-        { title: 'Last editor' },
-        { title: 'Pending cancellation' },
-        { title: 'Created' }
-      ],
+      columns,
       pageLength: 25,
       lengthMenu: [10, 25, 50, 100, 250],
-      order: [[2, 'asc']]
+      order: [[multiOrg ? 3 : 2, 'asc']]
     });
   }
 })();

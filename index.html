@@ -142,7 +142,19 @@
         <div class="row">
           <label>
             Organization
-            <input type="text" id="seats-org" placeholder="my-org" required autocomplete="off" />
+            <div id="seats-org-manual-wrap">
+              <input type="text" id="seats-org" placeholder="my-org" autocomplete="off" />
+              <span class="hint seats-org-hint">Fetch Enterprise Organizations above to enable multi-org selection.</span>
+            </div>
+            <div id="seats-org-select-wrap" class="hidden">
+              <input type="search" id="seats-org-search" placeholder="Filter organizations…" autocomplete="off" />
+              <div class="seats-org-select-actions">
+                <button type="button" id="seats-select-all-btn" class="seats-org-action-btn">Select All</button>
+                <button type="button" id="seats-deselect-all-btn" class="seats-org-action-btn">Deselect All</button>
+                <span id="seats-org-match-count" class="seats-org-match-count"></span>
+              </div>
+              <select multiple id="seats-org-select"></select>
+            </div>
           </label>
           <label>
             Personal Access Token (PAT)
