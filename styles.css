@@ -157,6 +157,9 @@ button:disabled { opacity: 0.6; cursor: not-allowed; }
 .seat-status.seat-active { background: rgba(63, 185, 80, 0.15); color: #3fb950; }
 .seat-status.seat-inactive { background: rgba(248, 81, 73, 0.15); color: var(--err); }
 
+#orgs-results .summary { grid-template-columns: repeat(1, 1fr); max-width: 220px; }
+.org-avatar { width: 18px; height: 18px; border-radius: 4px; vertical-align: middle; margin-right: 4px; }
+
 .charts-grid {
   display: grid;
   grid-template-columns: 1fr 1fr;

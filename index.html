@@ -89,6 +89,48 @@
     </div>
   </section>
 
+  <section id="orgs-section">
+    <header>
+      <h2>🏢 Enterprise Organizations</h2>
+      <p class="sub">Lists all organizations under a GitHub Enterprise account.</p>
+    </header>
+
+    <div class="card">
+      <form id="orgs-form">
+        <div class="row">
+          <label>
+            Enterprise slug
+            <input type="text" id="orgs-enterprise" placeholder="my-enterprise" required autocomplete="off" />
+          </label>
+          <label>
+            Personal Access Token (PAT)
+            <input type="password" id="orgs-pat" placeholder="ghp_… (requires enterprise read scope)" required autocomplete="off" />
+          </label>
+        </div>
+        <div class="actions">
+          <button type="submit" id="orgs-run-btn">Fetch Organizations</button>
+          <span class="note">Your PAT is sent to the local server only and used to call GitHub on your behalf.</span>
+        </div>
+      </form>
+      <div id="orgs-error" class="date-error hidden"></div>
+    </div>
+
+    <div id="orgs-results" class="hidden">
+      <div class="card summary">
+        <div class="stat"><div class="stat-label">Total organizations</div><div id="orgs-stat-total" class="stat-value">–</div></div>
+      </div>
+      <div class="card" id="orgs-table-card">
+        <div class="table-controls">
+          <h3>Organizations</h3>
+          <button id="orgs-download-csv" type="button">Download CSV</button>
+        </div>
+        <div class="table-wrap">
+          <table id="orgs-table" class="display" style="width:100%"></table>
+        </div>
+      </div>
+    </div>
+  </section>
+
   <section id="seats-section">
     <header>
       <h2>🪑 Copilot Seat Management &amp; Activity</h2>
