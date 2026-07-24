@@ -665,6 +665,100 @@
 
   function renderTable_UNUSED() { /* replaced by renderUsersTable + drill-down */ }
 
+  // --- Enterprise Organizations ---
+  let orgsTable = null;
+  let currentOrgsData = null;
+  const orgsForm = document.getElementById('orgs-form');
+  const orgsRunBtn = document.getElementById('orgs-run-btn');
+  const orgsError = document.getElementById('orgs-error');
+  const orgsResults = document.getElementById('orgs-results');
+
+  document.getElementById('orgs-download-csv').addEventListener('click', () => {
+    if (!currentOrgsData) return;
+    const cols = ['login', 'description', 'url'];
+    const headers = ['Organization', 'Description', 'URL'];
+    const escape = (v) => {
+      const s = v == null ? '' : String(v);
+      return /[",\n]/.test(s) ? `"${s.replace(/"/g, '""')}"` : s;
+    };
+    const csv = [headers.join(',')]
+      .concat((currentOrgsData.organizations || []).map(o => cols.map(c => escape(o[c])).join(',')))
+      .join('\n');
+    const blob = new Blob([csv], { type: 'text/csv' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `enterprise-organizations-${Date.now()}.csv`;
+    a.click();
+    URL.revokeObjectURL(url);
+  });
+
+  orgsForm.addEventListener('submit', async (e) => {
+    e.preventDefault();
+    orgsError.classList.add('hidden');
+    orgsError.textContent = '';
+    orgsRunBtn.disabled = true;
+
+    const payload = {
+      enterprise: document.getElementById('orgs-enterprise').value.trim(),
+      pat: document.getElementById('orgs-pat').value.trim()
+    };
+
+    try {
+      const res = await fetch('/api/enterprise-organizations', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload)
+      });
+      const info = await res.json().catch(() => ({}));
+      if (!res.ok) {
+        throw new Error(info.error || `Failed to fetch organizations (${res.status})`);
+      }
+      renderOrgs(info);
+    } catch (err) {
+      orgsError.textContent = err.message;
+      orgsError.classList.remove('hidden');
+      orgsResults.classList.add('hidden');
+    } finally {
+      orgsRunBtn.disabled = false;
+    }
+  });
+
+  function renderOrgs(data) {
+    currentOrgsData = data;
+    orgsResults.classList.remove('hidden');
+    const organizations = data.organizations || [];
+    document.getElementById('orgs-stat-total').textContent = organizations.length.toLocaleString();
+
+    const $t = jQuery('#orgs-table');
+    if (orgsTable) {
+      orgsTable.destroy();
+      $t.empty();
+    }
+
+    const rows = organizations.map(o => [
+      o.avatar_url
+        ? `<img src="${escapeHtml(o.avatar_url)}" alt="" class="org-avatar" /> ${escapeHtml(o.login)}`
+        : escapeHtml(o.login),
+      escapeHtml(o.description || '—'),
+      o.html_url || o.url
+        ? `<a href="${escapeHtml(o.html_url || o.url)}" target="_blank" rel="noopener">View</a>`
+        : '—'
+    ]);
+
+    orgsTable = $t.DataTable({
+      data: rows,
+      columns: [
+        { title: 'Organization' },
+        { title: 'Description' },
+        { title: 'Link' }
+      ],
+      pageLength: 25,
+      lengthMenu: [10, 25, 50, 100, 250],
+      order: [[0, 'asc']]
+    });
+  }
+
   // --- Copilot Seat Management & Activity ---
   let seatsTable = null;
   let currentSeatsData = null;
