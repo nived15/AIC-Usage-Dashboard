@@ -53,8 +53,15 @@ header code { background: var(--panel-2); padding: 1px 6px; border-radius: 4px; 
   gap: 16px;
   margin-bottom: 14px;
 }
+#orgs-form .row {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 16px;
+  margin-bottom: 14px;
+}
 #report-form label,
-#seats-form label {
+#seats-form label,
+#orgs-form label {
   display: flex;
   flex-direction: column;
   font-size: 13px;
@@ -63,7 +70,8 @@ header code { background: var(--panel-2); padding: 1px 6px; border-radius: 4px; 
 }
 #report-form .hint { color: var(--muted); font-weight: normal; }
 #report-form input,
-#seats-form input {
+#seats-form input,
+#orgs-form input {
   background: var(--panel-2);
   border: 1px solid var(--border);
   color: var(--text);
@@ -73,7 +81,8 @@ header code { background: var(--panel-2); padding: 1px 6px; border-radius: 4px; 
   color-scheme: dark;
 }
 #report-form input:focus,
-#seats-form input:focus {
+#seats-form input:focus,
+#orgs-form input:focus {
   outline: none;
   border-color: var(--accent);
   box-shadow: 0 0 0 3px rgba(47,129,247,0.25);
@@ -232,7 +241,8 @@ table.dataTable tbody tr:hover {
 @media (max-width: 900px) {
   .charts-grid { grid-template-columns: 1fr; }
   .summary { grid-template-columns: repeat(2, 1fr); }
-  #report-form .row { grid-template-columns: 1fr; }
+  #report-form .row,
+  #orgs-form .row { grid-template-columns: 1fr; }
   .card { margin: 16px; }
   header { padding: 20px 16px 0; }
 }
