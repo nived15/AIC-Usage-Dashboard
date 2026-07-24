@@ -182,6 +182,75 @@ async function runJob(jobId, { enterprise, pat, startDate, endDate }) {
   }
 }
 
+// --- GitHub Enterprise Organizations ---
+
+// Fetches all organizations under a GitHub Enterprise account.
+// Handles pagination (per_page=100, following the Link header) and surfaces
+// clear errors for 401 (unauthorized), 403 (forbidden / rate limited), and
+// 404 (enterprise not found).
+async function get_enterprise_organizations(enterprise_slug, auth_token) {
+  if (!enterprise_slug) throw new Error('enterprise_slug is required.');
+  if (!auth_token) throw new Error('auth_token is required.');
+
+  const organizations = [];
+  let url = `${GITHUB_API}/enterprises/${encodeURIComponent(enterprise_slug)}/orgs?per_page=100`;
+
+  while (url) {
+    let res;
+    try {
+      res = await fetch(url, { headers: ghHeaders(auth_token) });
+    } catch (err) {
+      console.error(`[get_enterprise_organizations] Network error while calling ${url}: ${err.message || err}`);
+      throw new Error(`Network error while fetching enterprise organizations: ${err.message || err}`);
+    }
+
+    if (!res.ok) {
+      let details = '';
+      try { details = await res.text(); } catch (_) { /* ignore */ }
+
+      if (res.status === 401) {
+        const msg = `Unauthorized (401): the provided auth token is invalid or expired.`;
+        console.error(`[get_enterprise_organizations] ${msg} ${details}`);
+        throw new Error(msg);
+      }
+      if (res.status === 403) {
+        const rateLimitRemaining = res.headers.get('x-ratelimit-remaining');
+        const msg = rateLimitRemaining === '0'
+          ? `Forbidden (403): API rate limit exceeded. Try again later.`
+          : `Forbidden (403): the token lacks sufficient permissions to list organizations for enterprise "${enterprise_slug}".`;
+        console.error(`[get_enterprise_organizations] ${msg} ${details}`);
+        throw new Error(msg);
+      }
+      if (res.status === 404) {
+        const msg = `Not Found (404): enterprise "${enterprise_slug}" does not exist or is not accessible with this token.`;
+        console.error(`[get_enterprise_organizations] ${msg} ${details}`);
+        throw new Error(msg);
+      }
+
+      const msg = `Get enterprise organizations failed (${res.status}): ${details}`;
+      console.error(`[get_enterprise_organizations] ${msg}`);
+      throw new Error(msg);
+    }
+
+    const json = await res.json();
+    if (Array.isArray(json)) organizations.push(...json);
+
+    // Follow pagination via the Link header (rel="next").
+    url = null;
+    const link = res.headers.get('link');
+    if (link) {
+      const next = link.split(',').map(s => s.trim()).find(s => /rel="next"/.test(s));
+      if (next) {
+        const m = next.match(/<([^>]+)>/);
+        if (m) url = m[1];
+      }
+    }
+  }
+
+  console.log(`[get_enterprise_organizations] Retrieved ${organizations.length} organizations for enterprise "${enterprise_slug}".`);
+  return organizations;
+}
+
 // --- Copilot Seat Management & Activity ---
 
 async function fetchAllSeats(org, pat) {
@@ -300,7 +369,27 @@ app.delete('/api/jobs/:id', (req, res) => {
   res.json({ ok: true });
 });
 
+app.post('/api/enterprise-organizations', async (req, res) => {
+  const { enterprise, pat } = req.body || {};
+  if (!enterprise || !pat) {
+    return res.status(400).json({ error: 'enterprise and pat are required.' });
+  }
+  try {
+    const organizations = await get_enterprise_organizations(enterprise, pat);
+    res.json({ organizations });
+  } catch (err) {
+    const message = err.message || String(err);
+    const status = /^Unauthorized \(401\)/.test(message) ? 401
+      : /^Forbidden \(403\)/.test(message) ? 403
+      : /^Not Found \(404\)/.test(message) ? 404
+      : 502;
+    res.status(status).json({ error: message });
+  }
+});
+
 const PORT = process.env.PORT || 3000;
 app.listen(PORT, () => {
   console.log(`AI Credit Usage Dashboard running at http://localhost:${PORT}`);
 });
+
+module.exports = { get_enterprise_organizations };
