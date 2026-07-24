@@ -724,18 +724,38 @@
     }
   });
 
-  function populateSeatsOrgSelect(organizations) {
+  let seatsOrgList = []; // all orgs; used to rebuild filtered options
+
+  function buildSeatsOrgOptions(query) {
     const select = document.getElementById('seats-org-select');
-    const selectWrap = document.getElementById('seats-org-select-wrap');
-    const manualWrap = document.getElementById('seats-org-manual-wrap');
-    if (!organizations || !organizations.length) return;
+    const q = (query || '').toLowerCase().trim();
+    // Preserve selected state across rebuilds
+    const selected = new Set(Array.from(select.options).filter(o => o.selected).map(o => o.value));
     select.innerHTML = '';
-    organizations.forEach(o => {
+    const filtered = q
+      ? seatsOrgList.filter(o => o.login.toLowerCase().includes(q) || (o.name || '').toLowerCase().includes(q))
+      : seatsOrgList;
+    filtered.forEach(o => {
       const opt = document.createElement('option');
       opt.value = o.login;
       opt.textContent = o.login + (o.name ? ` — ${o.name}` : '');
+      if (selected.has(o.login)) opt.selected = true;
       select.appendChild(opt);
     });
+    const countEl = document.getElementById('seats-org-match-count');
+    if (countEl) {
+      countEl.textContent = q ? `${filtered.length} of ${seatsOrgList.length}` : `${seatsOrgList.length} orgs`;
+    }
+  }
+
+  function populateSeatsOrgSelect(organizations) {
+    const selectWrap = document.getElementById('seats-org-select-wrap');
+    const manualWrap = document.getElementById('seats-org-manual-wrap');
+    if (!organizations || !organizations.length) return;
+    seatsOrgList = organizations;
+    const searchInput = document.getElementById('seats-org-search');
+    if (searchInput) searchInput.value = '';
+    buildSeatsOrgOptions('');
     selectWrap.classList.remove('hidden');
     manualWrap.classList.add('hidden');
   }
@@ -783,6 +803,10 @@
   const seatsRunBtn = document.getElementById('seats-run-btn');
   const seatsError = document.getElementById('seats-error');
   const seatsResults = document.getElementById('seats-results');
+
+  document.getElementById('seats-org-search').addEventListener('input', function () {
+    buildSeatsOrgOptions(this.value);
+  });
 
   document.getElementById('seats-select-all-btn').addEventListener('click', () => {
     const select = document.getElementById('seats-org-select');
