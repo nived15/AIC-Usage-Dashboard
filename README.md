@@ -14,6 +14,10 @@ Small local web app with two panels:
 - `POST /enterprises/{enterprise}/settings/billing/reports` — [Create a usage report export](https://docs.github.com/en/enterprise-cloud@latest/rest/billing/usage-reports?apiVersion=2026-03-10#create-a-usage-report-export)
 - `GET /enterprises/{enterprise}/settings/billing/reports/{report_id}` — [Get a usage report export](https://docs.github.com/en/enterprise-cloud@latest/rest/billing/usage-reports?apiVersion=2026-03-10#get-a-usage-report-export)
 
+### Enterprise Organizations
+
+- `POST /graphql` (GitHub GraphQL API) — `enterprise(slug).organizations` query with `read:enterprise` scope; paginated via cursor (100 orgs per page)
+
 ### Copilot Seat Management
 
 - `GET /orgs/{org}/copilot/billing/seats` — [List all Copilot seat assignments for an organization](https://docs.github.com/en/rest/copilot/copilot-user-management#list-all-copilot-seat-assignments-for-an-organization)
@@ -24,6 +28,7 @@ Small local web app with two panels:
 
 - Node.js **18+** (uses native `fetch` and `crypto.randomUUID`)
 - For **AI Credit Usage**: a GitHub PAT (classic) with the **`manage_billing:enterprise`** scope, owned by an enterprise admin or billing manager
+- For **Enterprise Organizations**: a GitHub PAT (classic) with the **`read:enterprise`** scope
 - For **Copilot Seat Management**: a GitHub PAT (classic) with the **`manage_billing:copilot`** scope (or `read:org` for read-only access), owned by an org owner or billing manager
 
 ---
@@ -66,6 +71,34 @@ While waiting, you'll get playful progress updates (report generation can take s
 - 🎭 Fun, engaging progress messages while polling
 
 The dashboard auto-detects common column names (`date`, `quantity`, `gross_amount`, `net_amount`, `sku`/`product`/`model`, `organization`, `user`/`username`/`actor`). If a field isn't present in the report, that chart shows a friendly "not detected" message but the rest of the dashboard still works.
+
+---
+
+## Enterprise Organizations
+
+Fill in:
+
+- **Enterprise slug** (the URL slug, not the display name)
+- **PAT** with `read:enterprise` scope
+
+Click **Fetch Organizations**. The server will:
+
+1. Query the GitHub GraphQL API for `enterprise(slug).organizations`, fetching up to 100 organizations per page.
+2. Paginate automatically until all organizations are retrieved.
+3. Return the list with each organization's login, name, description, URL, and avatar URL.
+
+### Enterprise Organizations Features
+
+- 🏢 Full paginated list of all organizations under your GitHub Enterprise account
+- Normalized response fields (`login`, `name`, `description`, `html_url`, `url`, `avatar_url`)
+
+### Troubleshooting
+
+| Error | Likely cause |
+| --- | --- |
+| `401 Unauthorized` | The PAT is invalid or expired |
+| `403 Forbidden` | The PAT lacks the `read:enterprise` scope, or the API rate limit is exceeded |
+| `404 Not Found` | The enterprise slug is wrong or the enterprise is not accessible with this token |
 
 ---
 
